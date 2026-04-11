@@ -1,0 +1,10 @@
+data:
+  raw_path: "data/clinvar_raw.csv"
+  processed_path: "data/clinvar_processed.csv"
+model:
+  hidden_dims: [64, 32]
+  dropout: 0.3
+  lr: 0.005
+  epochs: 100
+  batch_size: 16
+  mc_samples: 20
