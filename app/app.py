@@ -11,6 +11,13 @@ import requests
 base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.append(base_dir)
 
+# Auto-train on first deploy if model artifacts are missing
+_model_path = os.path.join(base_dir, 'models', 'model.pt')
+if not os.path.exists(_model_path):
+    with st.spinner("First run: training model... (takes ~30 seconds)"):
+        from src.train import train_pipeline
+        train_pipeline()
+
 from src.feature_engineering import extract_features
 from src.model import NIVEPNetwork
 from src.uncertainty import predict_with_uncertainty

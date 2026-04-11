@@ -19,9 +19,8 @@ nivep-env/
 models/*.pt
 models/*.pkl
 
-# Raw data (not for version control)
-data/clinvar_raw.csv
-data/*.csv
+# Raw data (78 KB synthetic CSV — safe to commit for deployment)
+# data/clinvar_raw.csv
 
 # Notebooks checkpoints
 notebooks/.ipynb_checkpoints/
