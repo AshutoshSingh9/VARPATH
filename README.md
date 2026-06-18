@@ -2,15 +2,15 @@
 
 **Variant Pathogenicity Assessment Research Tool**
 
-A clinical-grade genomic variant classification system that predicts the pathogenicity of genetic variants using a Bayesian-approximate neural network. Built on an MLP with Monte Carlo Dropout for uncertainty quantification, integrated with live public genomic databases (gnomAD, ClinVar, CADD) via REST API.
+A research-grade genomic variant classification system that predicts the pathogenicity of genetic variants. Built on an MLP with Monte Carlo Dropout for heuristic predictive-uncertainty estimates, integrated with live public genomic databases (gnomAD, ClinVar, CADD) via REST API. Note: performance is dominated by the CADD input feature (CADD-alone AUC ≈ 0.977), so the network adds little over a CADD threshold; treat the ACMG annotations as input-derived context, not as model reasoning.
 
 ---
 
 ## Features
 
 - **Multi-source variant lookup** — Search by gene name, dbSNP rsID, or ClinVar RCV accession; variant parameters are auto-populated from live API calls to MyVariant.info
-- **Pathogenicity prediction** — Binary classification (Pathogenic / Benign) with calibrated probability score
-- **Uncertainty estimation** — Monte Carlo Dropout over 20 stochastic forward passes yields an epistemic uncertainty bound (σ) alongside each prediction
+- **Pathogenicity prediction** — Binary classification (Pathogenic / Benign) with a probability score (uncalibrated; no reliability/Brier evaluation is performed)
+- **Uncertainty estimation** — Monte Carlo Dropout over 20 stochastic forward passes yields a heuristic predictive-uncertainty estimate (σ) alongside each prediction
 - **Best-checkpoint training** — Trains for 100 epochs, tracking validation loss per epoch and automatically restoring the best-generalizing weights before saving
 - **ACMG-aligned interpretation** — Results are annotated with ACMG/AMP guideline context (BA1, PM2 criteria) for allele frequency and CADD thresholds
 - **Interactive UI** — Dark-themed, single-page Streamlit dashboard with an animated dot-field background
@@ -33,8 +33,8 @@ A clinical-grade genomic variant classification system that predicts the pathoge
 ## Quickstart
 
 ```bash
-# 1. Navigate into the project
-cd nivep
+# 1. Navigate into the cloned repo
+cd VARPATH
 
 # 2. Install dependencies (uv manages the virtual environment automatically)
 uv pip install -r requirements.txt
@@ -53,22 +53,44 @@ uv run python -m pytest
 
 ## Model Performance
 
-Trained on a 80/20 split of a 2,000-variant ClinVar-derived dataset.
-Best checkpoint restored by minimum validation loss.
+Evaluated on a **group-aware 3-way split** (≈60/20/20 train/val/test) of a
+2,000-variant ClinVar-derived dataset. Identical feature vectors never straddle
+the split, the checkpoint is selected on the validation set only, and the test
+set is scored exactly once with a deterministic `eval()` pass (dropout off).
+Reported as mean ± std over 10 split seeds.
 
 | Metric | Value |
 |---|---|
-| Accuracy | 0.975 |
-| F1 Score | 0.975 |
-| AUC-ROC | 0.996 |
-| Val Loss (best) | 0.087 |
+| **ROC-AUC (held-out test)** | **0.990 ± 0.012** |
+| Accuracy | ~0.94 |
+| F1 Score | ~0.91 |
+
+> An earlier version of this README reported **AUC 0.996**. That figure was the
+> single favorable `random_state=42` run with the test set doubling as the
+> validation set and MC-dropout left on during scoring. It is not a stable
+> estimate — the same (uncorrected) pipeline averages 0.991 ± 0.003 across seeds.
+
+### Where the signal comes from
+
+| Probe | AUC | Interpretation |
+|---|---|---|
+| Raw CADD score alone (observed rows) | 0.977 | Genuine variant biology; the model barely beats a CADD threshold |
+| Full corrected model | 0.990 | In-distribution held-out performance |
+| Missingness scrambled to be label-independent | 0.960 | **~0.03 of the AUC rides on class-correlated missingness** (a ClinVar ascertainment artifact, not biology) |
+| Held out whole variant-consequence classes | 0.88 ± 0.14 | Worst-case generalization to unseen variant types is far weaker and unstable |
+
+**Honest takeaway:** the ~0.99 is real but dominated by CADD plus an ascertainment
+artifact. The dataset is a balanced case/control ClinVar sample, **not** an
+ascertainment-matched prospective stream, so this number will not transfer
+unchanged to clinical deployment. There is no gene/locus identifier in the data,
+so a true gene-disjoint (leakage-free) generalization estimate cannot be computed.
 
 ---
 
 ## Project Structure
 
 ```
-nivep/
+VARPATH/
 ├── app/
 │   └── app.py              # Streamlit dashboard
 ├── src/

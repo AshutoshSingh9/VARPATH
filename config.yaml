@@ -1,3 +1,4 @@
+seed: 42
 data:
   raw_path: "data/clinvar_raw.csv"
   processed_path: "data/clinvar_processed.csv"

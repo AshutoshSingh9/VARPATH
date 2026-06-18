@@ -4,19 +4,19 @@ import logging
 
 logger = logging.getLogger(__name__)
 
-def explain_predictions(model, X_train_tensor, X_test_tensor):
+def explain_predictions(model, X_test_tensor):
     """
-    Calculates feature attributions. 
-    Using Gradient-based attribution as a lightweight alternative to SHAP for PyTorch.
+    Gradient-based feature attribution (lightweight alternative to SHAP).
+    Works on a detached clone so the caller's tensor is never mutated.
+    The model returns logits, so attributions are gradients of the logit.
     """
     model.eval()
-    X_test_tensor.requires_grad_()
-    
-    outputs = model(X_test_tensor)
+    x = X_test_tensor.detach().clone().requires_grad_(True)
+
+    outputs = model(x)
     model.zero_grad()
-    
     outputs.sum().backward()
-    
-    attributions = X_test_tensor.grad.detach().cpu().numpy()
+
+    attributions = x.grad.detach().cpu().numpy()
     feature_importance = np.abs(attributions).mean(axis=0)
     return feature_importance
